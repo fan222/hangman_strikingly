@@ -1,5 +1,6 @@
 # dafeng@strikingly.com
 # 200, post, capital letters
+# {:success=>true, :score=>537, :playerId=>"dafeng@strikingly.com", :totalWordCount=>80, :correctWordCount=>37, :totalWrongGuessCount=>203}
 
 require 'net/http'
 require 'json'
@@ -42,10 +43,12 @@ class Hangman
 
   def take_turn
     guess = @guesser.guess(@board, @guessed_letters)
-    @guessed_letters.push(guess)
-    indices = @guesser.make_guess(guess)
-    update_board(guess, indices)
-    @guesser.handle_response(guess, indices)
+    unless guess.nil?
+      @guessed_letters.push(guess)
+      indices = @guesser.make_guess(guess)
+      update_board(guess, indices)
+      @guesser.handle_response(guess, indices)
+    end
   end
 
   def update_board(guess, indices)
@@ -59,9 +62,6 @@ class Hangman
 end
 
 class Guesser
-  RANKED_LETTERS = ["e","i","s","a","r","n","t","o","l","c","d","u","g",
-                    "p","m","h","b","y","f","v","k","w","z","x","j","q"]
-
   attr_reader :playerId, :sessionId
   attr_reader :candidate_words
 
@@ -164,18 +164,9 @@ class Guesser
 
   def guess(board, guessed_letters)
     freq_table = freq_table(board)
-
     most_frequent_letters = freq_table.sort_by { |letter, count| count }
     letter, _ = most_frequent_letters.last
-    if letter.nil?
-      RANKED_LETTERS.each do |chr|
-        unless guessed_letters.include?(chr)
-          return chr
-        end
-      end
-    else
-      letter
-    end
+    letter
   end
 
   def handle_response(guess, response_indices)
