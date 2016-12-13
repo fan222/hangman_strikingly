@@ -1,10 +1,5 @@
-# dafeng@strikingly.com
-# 200, post, capital letters
-# {:success=>true, :score=>537, :playerId=>"dafeng@strikingly.com", :totalWordCount=>80, :correctWordCount=>37, :totalWrongGuessCount=>203}
-
 require 'net/http'
 require 'json'
-require 'byebug'
 
 class Hangman
   MAX_GUESSES = 10
@@ -14,7 +9,6 @@ class Hangman
 
   def initialize(playerId = "dafeng@strikingly.com")
     @guesser = Guesser.new(playerId)
-    @guessed_letters = []
   end
 
   def play
@@ -22,7 +16,6 @@ class Hangman
     MAX_WORDS_NUM.times do |word_idx|
       setup
       MAX_GUESSES.times do |num_guesses|
-        p [word_idx, num_guesses]
         take_turn
         break if won?
       end
@@ -37,14 +30,12 @@ class Hangman
       secret_length = next_word_callback[:word].length
       @guesser.register_secret_length(secret_length)
       @board = [nil] * secret_length
-      @guessed_letters = []
     end
   end
 
   def take_turn
-    guess = @guesser.guess(@board, @guessed_letters)
+    guess = @guesser.guess(@board)
     unless guess.nil?
-      @guessed_letters.push(guess)
       indices = @guesser.make_guess(guess)
       update_board(guess, indices)
       @guesser.handle_response(guess, indices)
@@ -71,6 +62,7 @@ class Guesser
   end
 
   def register_secret_length(length)
+    # begining to play again; reset candidate_words
     @candidate_words = @dictionary.select { |word| word.length == length }
   end
 
@@ -162,10 +154,16 @@ class Guesser
     end
   end
 
-  def guess(board, guessed_letters)
+  def guess(board)
+    # I left this here so you can see it narrow things down.
+    # p @candidate_words
     freq_table = freq_table(board)
     most_frequent_letters = freq_table.sort_by { |letter, count| count }
     letter, _ = most_frequent_letters.last
+    # we'll never repeat a guess because we only look at unfilled
+    # positions to calculate frequency, and we remove a word from the
+    # candidates if it has a guessed letter in an unfilled position on
+    # the board.
     letter
   end
 
