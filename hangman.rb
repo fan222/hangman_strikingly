@@ -8,10 +8,12 @@ require 'byebug'
 class Hangman
   MAX_GUESSES = 10
   MAX_WORDS_NUM = 80
+
   attr_reader :board
 
   def initialize(playerId = "dafeng@strikingly.com")
     @guesser = Guesser.new(playerId)
+    @guessed_letters = []
   end
 
   def play
@@ -21,7 +23,7 @@ class Hangman
       MAX_GUESSES.times do |num_guesses|
         p [word_idx, num_guesses]
         take_turn
-        next if won?
+        break if won?
       end
     end
 
@@ -34,16 +36,16 @@ class Hangman
       secret_length = next_word_callback[:word].length
       @guesser.register_secret_length(secret_length)
       @board = [nil] * secret_length
+      @guessed_letters = []
     end
   end
 
   def take_turn
-    guess = @guesser.guess(@board)
-    unless guess.nil?
-      indices = @guesser.make_guess(guess)
-      update_board(guess, indices)
-      @guesser.handle_response(guess, indices)
-    end
+    guess = @guesser.guess(@board, @guessed_letters)
+    @guessed_letters.push(guess)
+    indices = @guesser.make_guess(guess)
+    update_board(guess, indices)
+    @guesser.handle_response(guess, indices)
   end
 
   def update_board(guess, indices)
@@ -57,6 +59,8 @@ class Hangman
 end
 
 class Guesser
+  RANKED_LETTERS = ["e","i","s","a","r","n","t","o","l","c","d","u","g",
+                    "p","m","h","b","y","f","v","k","w","z","x","j","q"]
 
   attr_reader :playerId, :sessionId
   attr_reader :candidate_words
@@ -158,12 +162,20 @@ class Guesser
     end
   end
 
-  def guess(board)
+  def guess(board, guessed_letters)
     freq_table = freq_table(board)
 
     most_frequent_letters = freq_table.sort_by { |letter, count| count }
     letter, _ = most_frequent_letters.last
-    letter
+    if letter.nil?
+      RANKED_LETTERS.each do |chr|
+        unless guessed_letters.include?(chr)
+          return chr
+        end
+      end
+    else
+      letter
+    end
   end
 
   def handle_response(guess, response_indices)
